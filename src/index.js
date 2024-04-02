@@ -5,8 +5,10 @@ const exphbs = require('express-handlebars');
 const methodOverride = require('method-override');
 const app = express();
 const port = 3000;
+const SortMiddleware = require('./app/middleware/SortMiddleware');
 const route = require('./routes');
 const db = require('./config/db');
+
 db.connected();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(
@@ -16,6 +18,7 @@ app.use(
 );
 app.use(express.json());
 app.use(methodOverride('_method'));
+app.use(SortMiddleware);
 // app.use(morgan('combined'))
 
 app.engine(
@@ -24,6 +27,24 @@ app.engine(
         extname: '.hbs',
         helpers: {
             sum: (a, b) => a + b,
+            sortable: (field, sort) => {
+                const sortType = field === sort.column ? sort.type : 'default';
+                const icons = {
+                    default: 'code',
+                    asc: 'arrow-up',
+                    desc: 'arrow-down',
+                };
+                const types = {
+                    default: 'desc',
+                    asc: 'desc',
+                    desc: 'asc',
+                };
+                const icon = icons[sortType];
+                const type = types[sortType];
+                return `<a href="?_sort&column=${field}&type=${type}">
+                <i class="sort ${icon === 'code' ? ' rotate' : ''}" data-feather="${icon}"></i>
+              </a>`;
+            },
         },
     }),
 );

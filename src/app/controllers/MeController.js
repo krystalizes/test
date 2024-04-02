@@ -4,24 +4,39 @@ const {
     multipleMongooseToObject,
 } = require('../../util/mongoose');
 class MeController {
-    // GET /me/stored/courses
+    // GET /me/stored-courses
     storedCourses(req, res, next) {
-        Course.find({})
-            .then((courses) => {
+        let coursesFindAll = Course.find({});
+        if (req.query.hasOwnProperty('_sort')) {
+            coursesFindAll = coursesFindAll.sort({
+                [req.query.column]: req.query.type,
+            });
+        }
+        Promise.all([
+            coursesFindAll,
+            Course.countDocuments(),
+            Course.countDocumentsWithDeleted(),
+        ])
+            .then(([courses, notDeletedCount, allCount]) => {
+                const deletedCount = allCount - notDeletedCount;
                 res.render('me/stored-courses', {
+                    deletedCount: deletedCount,
                     courses: multipleMongooseToObject(courses),
                 });
             })
             .catch(next);
     }
-    // POST /courses/store
-    store(req, res, next) {
-        const formData = req.body;
-        formData.image = `https://img.youtube.com/vi/${req.body.vidid}/0.jpg`;
-        const course = new Course(formData);
-        course
-            .save()
-            .then(() => res.redirect('/'))
+    // GET /me/trash-courses
+    trashCourses(req, res, next) {
+        Course.findDeleted({})
+            .then((courses) => {
+                const deletedCourses = courses.filter(
+                    (course) => course.deleted,
+                );
+                res.render('me/trash-courses', {
+                    courses: multipleMongooseToObject(deletedCourses),
+                });
+            })
             .catch(next);
     }
 }
